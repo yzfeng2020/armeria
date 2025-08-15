@@ -1,4 +1,4 @@
-name: CI
+name: CI-Databricks
 on:
   push:
     branches:
@@ -21,7 +21,10 @@ env:
 
 jobs:
   build:
-    runs-on: linux-ubuntu-latest
+    runs-on:
+      group: databricks-eng-protected-runner-group
+      labels: linux-ubuntu-latest
+
     timeout-minutes: 120
 
     steps:
@@ -49,7 +52,7 @@ jobs:
       - name: Build with Gradle (Shading only)
         run: |
           ./gradlew --no-daemon --stacktrace shadedJar shadedTestJar trimShadedJar \
-          '--max-workers=8' --parallel \
+          '--max-workers=4' --parallel \
           -PnoLint \
           -PbuildJdkVersion=21 \
           -PtestJavaVersion=21 \
@@ -59,7 +62,7 @@ jobs:
       - name: Build with Gradle
         run: |
           ./gradlew --no-daemon --stacktrace build \
-          '--max-workers=8' --parallel \
+          '--max-workers=4' --parallel \
           -PnoLint \
           -PflakyTests=false \
           -Pretry=true \
@@ -108,7 +111,9 @@ jobs:
         shell: bash
 
   lint:
-    runs-on: ubuntu-latest
+    runs-on:
+      group: databricks-eng-protected-runner-group
+      labels: linux-ubuntu-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -125,10 +130,12 @@ jobs:
 
       - name: Run the linters
         run: |
-          ./gradlew --no-daemon --stacktrace --max-workers=8 --parallel lint
+          ./gradlew --no-daemon --stacktrace --max-workers=2 --parallel lint
 
   flaky-tests:
-    runs-on: ubuntu-latest
+    runs-on:
+      group: databricks-eng-protected-runner-group
+      labels: linux-ubuntu-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -145,7 +152,7 @@ jobs:
 
       - name: Run flaky tests
         run: |
-          ./gradlew --no-daemon --stacktrace --max-workers=2 --parallel check \
+          ./gradlew --no-daemon --stacktrace --max-workers=4 --parallel check \
           -PnoLint -PflakyTests=true -Pretry=true \
           -PbuildJdkVersion=21 \
           -PtestJavaVersion=21 \
