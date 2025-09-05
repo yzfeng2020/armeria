@@ -94,6 +94,7 @@ import io.netty.handler.codec.http2.DefaultHttp2ConnectionDecoder;
 import io.netty.handler.codec.http2.DefaultHttp2ConnectionEncoder;
 import io.netty.handler.codec.http2.DefaultHttp2FrameReader;
 import io.netty.handler.codec.http2.DefaultHttp2FrameWriter;
+import io.netty.handler.codec.http2.DefaultHttp2LocalFlowController;
 import io.netty.handler.codec.http2.Http2ClientUpgradeCodec;
 import io.netty.handler.codec.http2.Http2CodecUtil;
 import io.netty.handler.codec.http2.Http2Connection;
@@ -537,7 +538,9 @@ final class HttpClientPipelineConfigurator extends ChannelDuplexHandler {
             final Http2ResponseDecoder responseDecoder = this.responseDecoder;
             final DecodedHttpResponse res = new DecodedHttpResponse(ctx.channel().eventLoop());
 
+            final int id = 0;
             res.init(responseDecoder.inboundTrafficController());
+            res.setStreamId(1);
             res.subscribe(new Subscriber<HttpObject>() {
 
                 private boolean notified;
@@ -578,7 +581,7 @@ final class HttpClientPipelineConfigurator extends ChannelDuplexHandler {
                     System.nanoTime(), SystemInfo.currentTimeMicros());
 
             // NB: No need to set the response timeout because we have session creation timeout.
-            responseDecoder.addResponse(null, 0, res, reqCtx, ctx.channel().eventLoop());
+            responseDecoder.addResponse(null, id, res, reqCtx, ctx.channel().eventLoop());
             ctx.fireChannelActive();
         }
 
@@ -779,6 +782,10 @@ final class HttpClientPipelineConfigurator extends ChannelDuplexHandler {
                 /* validateHeaders */ false, clientFactory.http2MaxHeaderListSize());
         Http2FrameReader reader = new DefaultHttp2FrameReader(headersDecoder);
         reader = new Http2InboundFrameLogger(reader, frameLogger);
+        final DefaultHttp2LocalFlowController flowController =
+                new DefaultHttp2LocalFlowController(connection, clientFactory.http2StreamWindowUpdateRatio(),
+                                                    false);
+        connection.local().flowController(flowController);
         return new DefaultHttp2ConnectionDecoder(connection, encoder, reader);
     }
 
